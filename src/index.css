@@ -1,0 +1,40 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-brand-dark text-white font-sans;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-brand-card rounded-2xl p-4 border border-white/5;
+  }
+
+  .btn-primary {
+    @apply bg-brand-gold text-black font-bold py-3 px-6 rounded-xl active:scale-95 transition-transform;
+  }
+
+  .btn-danger {
+    @apply bg-brand-red text-white font-bold py-3 px-6 rounded-xl active:scale-95 transition-transform;
+  }
+
+  .btn-ghost {
+    @apply border border-white/20 text-white font-bold py-3 px-6 rounded-xl active:scale-95 transition-transform;
+  }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 0; }
+
+/* Safe area for mobile */
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 16px);
+}
