@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth'
-import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore'
+import { doc, setDoc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { auth, db, googleProvider } from '../firebase'
 
 const AuthContext = createContext(null)
@@ -53,6 +53,17 @@ export function AuthProvider({ children }) {
         stats: { correctTips: 0, wrongTips: 0, highestOddsWon: 0 },
         createdAt: serverTimestamp(),
       })
+    } else {
+      // Patch missing fields for existing users
+      const data = snap.data()
+      const patch = {}
+      if (data.allInLeft === undefined) patch.allInLeft = 1
+      if (data.spionageLeft === undefined) patch.spionageLeft = 2
+      if (data.currentStreak === undefined) patch.currentStreak = 0
+      if (data.bestStreak === undefined) patch.bestStreak = 0
+      if (data.hasMomentum === undefined) patch.hasMomentum = false
+      if (data.h2h === undefined) patch.h2h = {}
+      if (Object.keys(patch).length > 0) await updateDoc(ref, patch)
     }
   }
 
