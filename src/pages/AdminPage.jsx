@@ -9,31 +9,9 @@ import {
 } from 'firebase/firestore'
 import { db } from '../firebase'
 import { calcPoints, getTendency } from '../lib/scoring'
+import { ALL_TEAMS as TEAMS } from '../lib/teams'
 
 const PHASES = ['Gruppe', 'Round of 32', 'Achtelfinale', 'Viertelfinale', 'Halbfinale', 'Finale']
-const TEAMS = [
-  { name: 'Deutschland', code: 'DE' }, { name: 'Frankreich', code: 'FR' },
-  { name: 'Spanien', code: 'ES' }, { name: 'England', code: 'GB-ENG' },
-  { name: 'Brasilien', code: 'BR' }, { name: 'Argentinien', code: 'AR' },
-  { name: 'USA', code: 'US' }, { name: 'Mexiko', code: 'MX' },
-  { name: 'Portugal', code: 'PT' }, { name: 'Niederlande', code: 'NL' },
-  { name: 'Belgien', code: 'BE' }, { name: 'Italien', code: 'IT' },
-  { name: 'Kroatien', code: 'HR' }, { name: 'Marokko', code: 'MA' },
-  { name: 'Japan', code: 'JP' }, { name: 'Senegal', code: 'SN' },
-  { name: 'Kolumbien', code: 'CO' }, { name: 'Uruguay', code: 'UY' },
-  { name: 'Schweiz', code: 'CH' }, { name: 'Australien', code: 'AU' },
-  { name: 'Südkorea', code: 'KR' }, { name: 'Nigeria', code: 'NG' },
-  { name: 'Ghana', code: 'GH' }, { name: 'Kanada', code: 'CA' },
-  { name: 'Ecuador', code: 'EC' }, { name: 'Katar', code: 'QA' },
-  { name: 'Saudi-Arabien', code: 'SA' }, { name: 'Iran', code: 'IR' },
-  { name: 'Türkei', code: 'TR' }, { name: 'Österreich', code: 'AT' },
-  { name: 'Polen', code: 'PL' }, { name: 'Serbien', code: 'RS' },
-  { name: 'Dänemark', code: 'DK' }, { name: 'Schweden', code: 'SE' },
-  { name: 'Ukraine', code: 'UA' }, { name: 'Tschechien', code: 'CZ' },
-  { name: 'Rumänien', code: 'RO' }, { name: 'Georgien', code: 'GE' },
-  { name: 'Costa Rica', code: 'CR' }, { name: 'Panama', code: 'PA' },
-  { name: 'Jamaika', code: 'JM' }, { name: 'Ungarn', code: 'HU' },
-]
 
 function TeamSelect({ label, value, onChange }) {
   const selected = TEAMS.find((t) => t.name === value)
@@ -68,8 +46,8 @@ export default function AdminPage() {
   const [deleteConfirm, setDeleteConfirm] = useState(null) // match id to confirm delete
 
   const [form, setForm] = useState({
-    home: 'Deutschland', homeCode: 'DE',
-    away: 'Brasilien', awayCode: 'BR',
+    home: TEAMS[0].name, homeCode: TEAMS[0].code,
+    away: TEAMS[1].name, awayCode: TEAMS[1].code,
     phase: 'Gruppe', kickoff: '',
     oddsHome: '2.00', oddsDraw: '3.20', oddsAway: '3.50',
     isMatchOfDay: false,
