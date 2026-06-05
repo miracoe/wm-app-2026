@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import {
   collection, addDoc, getDocs, updateDoc, doc, deleteDoc,
-  serverTimestamp, query, orderBy, writeBatch, getDoc,
+  serverTimestamp, query, orderBy, writeBatch, getDoc, setDoc,
 } from 'firebase/firestore'
 import { db } from '../firebase'
 import { calcPoints, getTendency } from '../lib/scoring'
@@ -56,6 +56,13 @@ export default function AdminPage() {
   const [resultMatchId, setResultMatchId] = useState('')
   const [resultHome, setResultHome] = useState('')
   const [resultAway, setResultAway] = useState('')
+
+  // Bonus Auswertung
+  const [bonusChampion, setBonusChampion] = useState(TEAMS[0].name)
+  const [bonusFinalist, setBonusFinalist] = useState(TEAMS[1].name)
+  const [bonusTopScorer, setBonusTopScorer] = useState(TEAMS[0].name)
+  const [bonusTopScorerGoals, setBonusTopScorerGoals] = useState('')
+  const [awardingBonus, setAwardingBonus] = useState(false)
 
   useEffect(() => {
     if (!isAdmin) { navigate('/'); return }
@@ -191,33 +198,39 @@ export default function AdminPage() {
         if (!ud) continue
 
         const isCorrect = tipResults[tip.uid]
+        const isExact = tip.home === h && tip.away === a
         const hasMomentum = (ud.currentStreak || 0) >= 3
 
         const points = calcPoints(tip, result, odds, { isMatchOfDay, hasMomentum })
         const newTotal = Math.max(0, (ud.totalPoints || 0) + points)
 
-        // Streak tracking
+        // Streak
         const prevStreak = ud.currentStreak || 0
         const newStreak = isCorrect ? Math.max(1, prevStreak + 1) : Math.min(-1, prevStreak - 1)
         const newBestStreak = Math.max(ud.bestStreak || 0, newStreak)
+
+        // Badges
+        const badges = new Set(ud.badges || [])
+        if (isExact) badges.add('wahrsager')
+        if (newStreak <= -3) badges.add('expert_of_doom')
+        const newHighestOdds = isCorrect && odds > (ud.stats?.highestOddsWon || 0) ? odds : null
 
         const update = {
           totalPoints: newTotal,
           currentStreak: newStreak,
           bestStreak: newBestStreak,
           hasMomentum: newStreak >= 3,
+          badges: [...badges],
           'stats.correctTips': (ud.stats?.correctTips || 0) + (isCorrect ? 1 : 0),
           'stats.wrongTips': (ud.stats?.wrongTips || 0) + (isCorrect ? 0 : 1),
         }
 
-        if (isCorrect && odds > (ud.stats?.highestOddsWon || 0)) {
-          update['stats.highestOddsWon'] = odds
-        }
+        if (newHighestOdds) update['stats.highestOddsWon'] = newHighestOdds
         if (tip.joker) update.jokersLeft = Math.max(0, (ud.jokersLeft || 0) - 1)
         if (tip.insurance && !isCorrect) update.insuranceLeft = Math.max(0, (ud.insuranceLeft || 0) - 1)
         if (tip.allIn) update.allInLeft = Math.max(0, (ud.allInLeft || 0) - 1)
 
-        // H2H updates
+        // H2H
         const h2h = { ...(ud.h2h || {}) }
         Object.entries(tipResults).forEach(([otherUid, otherCorrect]) => {
           if (otherUid === tip.uid) return
@@ -244,20 +257,68 @@ export default function AdminPage() {
 
   async function updateRanks() {
     const snap = await getDocs(collection(db, 'users'))
-    const sorted = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
-      .sort((a, b) => b.totalPoints - a.totalPoints)
+    const users = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+    const sorted = [...users].sort((a, b) => b.totalPoints - a.totalPoints)
+
+    // Risiko-König = Spieler mit höchster gewonnener Quote
+    const maxOdds = Math.max(...users.map((u) => u.stats?.highestOddsWon || 0))
+    const risikoKoenig = maxOdds > 0 ? users.find((u) => (u.stats?.highestOddsWon || 0) === maxOdds)?.id : null
+
     const batch = writeBatch(db)
     sorted.forEach((u, i) => {
       const isLast = i === sorted.length - 1
-      const badges = [...(u.badges || []).filter((b) => b !== 'keller_laterne')]
-      if (isLast && sorted.length > 1) badges.push('keller_laterne')
+      const badges = new Set((u.badges || []).filter((b) => b !== 'keller_laterne' && b !== 'risiko_koenig'))
+      if (isLast && sorted.length > 1) badges.add('keller_laterne')
+      if (risikoKoenig === u.id) badges.add('risiko_koenig')
       batch.update(doc(db, 'users', u.id), {
         lastRank: u.currentRank || i + 1,
         currentRank: i + 1,
-        badges,
+        badges: [...badges],
       })
     })
     await batch.commit()
+  }
+
+  async function handleAwardBonusTips() {
+    setAwardingBonus(true)
+    try {
+      const bonusSnap = await getDocs(collection(db, 'bonusTips'))
+      const usersSnap = await getDocs(collection(db, 'users'))
+      const allUsers = Object.fromEntries(usersSnap.docs.map((d) => [d.id, d.data()]))
+
+      const actualGoals = bonusTopScorerGoals ? parseInt(bonusTopScorerGoals) : null
+      const batch = writeBatch(db)
+
+      for (const bonusDoc of bonusSnap.docs) {
+        const uid = bonusDoc.id
+        const bt = bonusDoc.data()
+        const ud = allUsers[uid]
+        if (!ud) continue
+
+        let bonusPoints = 0
+        if (bt.champion === bonusChampion) bonusPoints += 100
+        if (bt.finalist === bonusFinalist) bonusPoints += 50
+        if (bt.topScorer === bonusTopScorer) {
+          bonusPoints += 75
+          if (actualGoals && bt.topScorerGoals === actualGoals) bonusPoints += 25
+        }
+
+        if (bonusPoints > 0) {
+          batch.update(doc(db, 'users', uid), {
+            totalPoints: (ud.totalPoints || 0) + bonusPoints,
+          })
+        }
+
+        // Bonus-Dokument als abgerechnet markieren
+        batch.update(doc(db, 'bonusTips', uid), { locked: true, awardedPoints: bonusPoints })
+      }
+
+      await batch.commit()
+      await updateRanks()
+      flash(`✅ Bonus-Tipps ausgewertet! Weltmeister: ${bonusChampion} · Finalist: ${bonusFinalist} · Torschütze: ${bonusTopScorer}`)
+    } finally {
+      setAwardingBonus(false)
+    }
   }
 
   const upcomingMatches = matches.filter((m) => m.status === 'upcoming')
@@ -276,12 +337,13 @@ export default function AdminPage() {
         )}
 
         {/* Tabs */}
-        <div className="grid grid-cols-4 gap-1 bg-white/5 rounded-2xl p-1.5">
+        <div className="grid grid-cols-5 gap-1 bg-white/5 rounded-2xl p-1.5">
           {[
             { key: 'create', label: '➕ Neu' },
             { key: 'manage', label: '✏️ Spiele' },
             { key: 'live', label: '🔴 Live' },
             { key: 'result', label: '📝 Erg.' },
+            { key: 'bonus', label: '🎯 Bonus' },
           ].map(({ key, label }) => (
             <button key={key} onClick={() => { setActiveTab(key); setEditMatch(null) }}
               className={`py-2 rounded-xl text-xs font-bold transition-all ${
@@ -589,6 +651,70 @@ export default function AdminPage() {
             {!selectedResult && (
               <p className="text-center text-white/20 text-sm py-6">Wähle ein Spiel aus</p>
             )}
+          </div>
+        )}
+
+        {/* ── TAB: Bonus Auswertung ── */}
+        {activeTab === 'bonus' && (
+          <div className="space-y-3">
+            <div className="card bg-brand-gold/10 border-brand-gold/20">
+              <p className="text-xs text-brand-gold font-bold uppercase tracking-wider mb-1">Bonus-Tipps auswerten</p>
+              <p className="text-xs text-white/40">Trage die tatsächlichen Ergebnisse ein. Punkte werden an alle Spieler mit richtigen Bonus-Tipps vergeben.</p>
+            </div>
+
+            <div className="card space-y-4">
+              {/* Weltmeister */}
+              <div>
+                <label className="text-xs text-white/40 mb-1 block">🏆 Weltmeister</label>
+                <select value={bonusChampion} onChange={(e) => setBonusChampion(e.target.value)}
+                  className="w-full appearance-none bg-white/10 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white outline-none">
+                  {TEAMS.map((t) => <option key={t.code} value={t.name}>{t.name}</option>)}
+                </select>
+              </div>
+
+              {/* Finalist */}
+              <div>
+                <label className="text-xs text-white/40 mb-1 block">🥈 Finalist (Verlierer)</label>
+                <select value={bonusFinalist} onChange={(e) => setBonusFinalist(e.target.value)}
+                  className="w-full appearance-none bg-white/10 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white outline-none">
+                  {TEAMS.map((t) => <option key={t.code} value={t.name}>{t.name}</option>)}
+                </select>
+              </div>
+
+              {/* Torschützenkönig Land */}
+              <div>
+                <label className="text-xs text-white/40 mb-1 block">⚽ Torschützenkönig — Land</label>
+                <select value={bonusTopScorer} onChange={(e) => setBonusTopScorer(e.target.value)}
+                  className="w-full appearance-none bg-white/10 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white outline-none">
+                  {TEAMS.map((t) => <option key={t.code} value={t.name}>{t.name}</option>)}
+                </select>
+              </div>
+
+              {/* Tore */}
+              <div>
+                <label className="text-xs text-white/40 mb-1 block">Tore des Torschützenkönigs (optional, +25 Bonus)</label>
+                <input type="number" min="0" max="20" value={bonusTopScorerGoals}
+                  onChange={(e) => setBonusTopScorerGoals(e.target.value)}
+                  placeholder="z.B. 8"
+                  className="w-full bg-white/10 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white outline-none text-center font-bold" />
+              </div>
+            </div>
+
+            {/* Punkte-Übersicht */}
+            <div className="card bg-white/5 space-y-1 text-xs text-white/50">
+              <p>🏆 Weltmeister richtig → <b className="text-white">+100 Pkt</b></p>
+              <p>🥈 Finalist richtig → <b className="text-white">+50 Pkt</b></p>
+              <p>⚽ Torschützen-Land richtig → <b className="text-white">+75 Pkt</b></p>
+              <p>⚽ + genaue Torzahl → <b className="text-white">+25 Pkt extra</b></p>
+            </div>
+
+            <button onClick={handleAwardBonusTips} disabled={awardingBonus}
+              className="w-full btn-primary disabled:opacity-40">
+              {awardingBonus ? '⏳ Punkte werden vergeben…' : '✅ Bonus-Tipps auswerten & Punkte vergeben'}
+            </button>
+            <p className="text-xs text-white/20 text-center">
+              Bonus-Tipps werden danach gesperrt — keine Änderungen mehr möglich.
+            </p>
           </div>
         )}
       </div>
