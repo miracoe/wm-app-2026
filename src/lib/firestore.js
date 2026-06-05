@@ -7,7 +7,7 @@ import { db } from '../firebase'
 // ─── Users ──────────────────────────────────────────────────────────────────
 
 export const getLeaderboard = (callback) => {
-  const q = query(collection(db, 'users'), orderBy('totalPoints', 'desc'))
+  const q = query(collection(db, 'users'), orderBy('totalPoints', 'desc'), orderBy('displayName', 'asc'))
   return onSnapshot(q, (snap) => {
     const users = snap.docs.map((d, i) => ({ ...d.data(), rank: i + 1 }))
     callback(users)

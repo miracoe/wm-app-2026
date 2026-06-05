@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth'
-import { doc, setDoc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore'
+import { doc, setDoc, getDoc, updateDoc, onSnapshot, serverTimestamp } from 'firebase/firestore'
 import { auth, db, googleProvider } from '../firebase'
 
 const AuthContext = createContext(null)
@@ -11,24 +11,35 @@ export function AuthProvider({ children }) {
   const [isAdmin, setIsAdmin] = useState(false)
   const [loading, setLoading] = useState(true)
 
+  // Auth state
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         setUser(firebaseUser)
         await ensureUserDoc(firebaseUser)
-        const userSnap = await getDoc(doc(db, 'users', firebaseUser.uid))
-        const data = userSnap.data()
-        setUserData(data)
-        setIsAdmin(data?.isAdmin === true)
       } else {
         setUser(null)
         setUserData(null)
         setIsAdmin(false)
+        setLoading(false)
+      }
+    })
+    return unsub
+  }, [])
+
+  // Reaktiver User-Doc Listener — hält userData immer aktuell
+  useEffect(() => {
+    if (!user) return
+    const unsub = onSnapshot(doc(db, 'users', user.uid), (snap) => {
+      if (snap.exists()) {
+        const data = snap.data()
+        setUserData(data)
+        setIsAdmin(data.isAdmin === true)
       }
       setLoading(false)
     })
     return unsub
-  }, [])
+  }, [user])
 
   async function ensureUserDoc(firebaseUser) {
     const ref = doc(db, 'users', firebaseUser.uid)
@@ -45,6 +56,7 @@ export function AuthProvider({ children }) {
         insuranceLeft: 1,
         allInLeft: 1,
         spionageLeft: 2,
+        spiedMatches: [],
         badges: [],
         currentStreak: 0,
         bestStreak: 0,
@@ -54,11 +66,12 @@ export function AuthProvider({ children }) {
         createdAt: serverTimestamp(),
       })
     } else {
-      // Patch missing fields for existing users
+      // Patch fehlende Felder für bestehende User
       const data = snap.data()
       const patch = {}
       if (data.allInLeft === undefined) patch.allInLeft = 1
       if (data.spionageLeft === undefined) patch.spionageLeft = 2
+      if (data.spiedMatches === undefined) patch.spiedMatches = []
       if (data.currentStreak === undefined) patch.currentStreak = 0
       if (data.bestStreak === undefined) patch.bestStreak = 0
       if (data.hasMomentum === undefined) patch.hasMomentum = false

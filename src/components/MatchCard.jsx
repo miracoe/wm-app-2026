@@ -3,7 +3,7 @@ import Flag from './Flag'
 import CountdownTimer from './CountdownTimer'
 import {
   getUserTipsForMatch, setTip, getAllTipsForMatch,
-  getReactions, addReaction, getAllUsers, updateMatch,
+  getReactions, addReaction,
 } from '../lib/firestore'
 import { useAuth } from '../context/AuthContext'
 import { updateDoc, doc, getDoc } from 'firebase/firestore'
@@ -134,63 +134,24 @@ function ReactionBar({ matchId }) {
   )
 }
 
-function SpionageModal({ matchId, currentUid, onClose, onSpend }) {
-  const [users, setUsers] = useState([])
-  const [revealed, setRevealed] = useState(null)
-  const [loading, setLoading] = useState(false)
-
-  useEffect(() => {
-    getAllUsers().then((snap) => {
-      setUsers(snap.docs.map((d) => d.data()).filter((u) => u.uid !== currentUid))
-    })
-  }, [currentUid])
-
-  async function reveal(targetUid) {
-    setLoading(true)
-    try {
-      const snap = await getDoc(doc(db, 'matches', matchId, 'tips', targetUid))
-      setRevealed({ uid: targetUid, tip: snap.exists() ? snap.data() : null })
-      await onSpend()
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const targetUser = users.find((u) => u.uid === revealed?.uid)
-
+function SpionageConfirm({ onConfirm, onClose, spending }) {
   return (
-    <div className="fixed inset-0 bg-black/70 z-50 flex items-end" onClick={onClose}>
-      <div className="bg-brand-card w-full rounded-t-3xl p-5 space-y-4" onClick={(e) => e.stopPropagation()}>
-        <h3 className="font-bold text-center text-lg">🕵️ Spionage <span className="text-brand-red text-sm">(-5 Punkte)</span></h3>
-
-        {!revealed ? (
-          <div className="space-y-2">
-            <p className="text-xs text-white/40 text-center">Wessen Tipp willst du sehen?</p>
-            {users.map((u) => (
-              <button
-                key={u.uid}
-                onClick={() => reveal(u.uid)}
-                disabled={loading}
-                className="w-full flex items-center gap-3 bg-white/5 rounded-xl px-4 py-3 active:bg-white/10"
-              >
-                {u.photoURL
-                  ? <img src={u.photoURL} className="w-8 h-8 rounded-full" alt="" />
-                  : <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">{u.displayName?.[0]}</div>
-                }
-                <span className="font-bold">{u.displayName}</span>
-              </button>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center space-y-3">
-            <p className="text-white/50 text-sm">{targetUser?.displayName} tippt:</p>
-            {revealed.tip
-              ? <p className="font-display text-4xl text-brand-gold">{revealed.tip.home} : {revealed.tip.away}</p>
-              : <p className="text-white/30">Hat noch nicht getippt 😅</p>
-            }
-            <button onClick={onClose} className="btn-ghost w-full">Schließen</button>
-          </div>
-        )}
+    <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center px-6" onClick={onClose}>
+      <div className="bg-brand-card w-full max-w-sm rounded-3xl p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+        <div className="text-center space-y-1">
+          <p className="text-3xl">🕵️</p>
+          <p className="font-bold text-lg">Spionage einsetzen?</p>
+          <p className="text-sm text-white/50">
+            Du siehst alle Tipps für dieses Spiel — dauerhaft, auch wenn Mitspieler ihren Tipp noch ändern.
+          </p>
+          <p className="text-brand-red font-bold text-sm">Kostet 5 Punkte · 1 Spionage-Token</p>
+        </div>
+        <div className="flex gap-3">
+          <button onClick={onClose} className="flex-1 btn-ghost">Abbrechen</button>
+          <button onClick={onConfirm} disabled={spending} className="flex-1 btn-primary disabled:opacity-40">
+            {spending ? '…' : 'Einsetzen'}
+          </button>
+        </div>
       </div>
     </div>
   )
@@ -207,7 +168,10 @@ export default function MatchCard({ match }) {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [showReveal, setShowReveal] = useState(false)
-  const [showSpionage, setShowSpionage] = useState(false)
+  const [showSpionageConfirm, setShowSpionageConfirm] = useState(false)
+  const [spionageSpending, setSpionageSpending] = useState(false)
+
+  const hasSpied = userData?.spiedMatches?.includes(match.id) ?? false
 
   const canTip = isTippable(match)
   const isAfterKickoff = !canTip && match.status === 'upcoming'
@@ -239,11 +203,20 @@ export default function MatchCard({ match }) {
     } finally { setSaving(false) }
   }
 
-  async function handleSpionageSpend() {
+  async function handleSpionageConfirm() {
     if (!user || !userData) return
-    const newPoints = Math.max(0, (userData.totalPoints || 0) - 5)
-    const newSpionage = Math.max(0, (userData.spionageLeft || 0) - 1)
-    await updateDoc(doc(db, 'users', user.uid), { totalPoints: newPoints, spionageLeft: newSpionage })
+    setSpionageSpending(true)
+    try {
+      await updateDoc(doc(db, 'users', user.uid), {
+        totalPoints: Math.max(0, (userData.totalPoints || 0) - 5),
+        spionageLeft: Math.max(0, (userData.spionageLeft || 0) - 1),
+        spiedMatches: [...(userData.spiedMatches || []), match.id],
+      })
+      setShowSpionageConfirm(false)
+      // userData wird durch onSnapshot reaktiv aktualisiert → hasSpied wird true
+    } finally {
+      setSpionageSpending(false)
+    }
   }
 
   const statusBadge = match.status === 'live'
@@ -337,13 +310,18 @@ export default function MatchCard({ match }) {
       )}
 
       {/* Spionage button */}
-      {canTip && (userData?.spionageLeft ?? 0) > 0 && (
+      {canTip && !hasSpied && (userData?.spionageLeft ?? 0) > 0 && (
         <button
-          onClick={() => setShowSpionage(true)}
+          onClick={() => setShowSpionageConfirm(true)}
           className="w-full mt-2 py-2 rounded-xl text-xs font-bold border border-white/10 text-white/40 active:bg-white/5"
         >
-          🕵️ Spionage ({userData?.spionageLeft} übrig) — kostet 5 Punkte
+          🕵️ Spionage einsetzen ({userData?.spionageLeft} übrig)
         </button>
+      )}
+      {canTip && hasSpied && (
+        <div className="mt-2 py-2 rounded-xl text-xs font-bold text-center border border-brand-gold/20 text-brand-gold/60">
+          🕵️ Spionage aktiv — alle Tipps sichtbar
+        </div>
       )}
 
       {/* Tip result */}
@@ -361,7 +339,13 @@ export default function MatchCard({ match }) {
         </button>
       )}
 
-      {/* Tipp-Enthüllung toggle */}
+      {/* Tipp-Enthüllung: auto wenn Spionage aktiv, sonst toggle nach Anstoß */}
+      {hasSpied && canTip && (
+        <div className="mt-2">
+          <TippReveal matchId={match.id} currentUid={user?.uid} />
+        </div>
+      )}
+
       {(match.status === 'live' || match.status === 'finished' || isAfterKickoff) && (
         <button
           onClick={() => setShowReveal(!showReveal)}
@@ -380,13 +364,12 @@ export default function MatchCard({ match }) {
       {/* Reactions */}
       {match.status === 'finished' && <ReactionBar matchId={match.id} />}
 
-      {/* Spionage modal */}
-      {showSpionage && (
-        <SpionageModal
-          matchId={match.id}
-          currentUid={user?.uid}
-          onClose={() => setShowSpionage(false)}
-          onSpend={handleSpionageSpend}
+      {/* Spionage confirm modal */}
+      {showSpionageConfirm && (
+        <SpionageConfirm
+          onConfirm={handleSpionageConfirm}
+          onClose={() => setShowSpionageConfirm(false)}
+          spending={spionageSpending}
         />
       )}
     </div>

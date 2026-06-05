@@ -6,6 +6,7 @@ import TippenPage from './pages/TippenPage'
 import ProfilPage from './pages/ProfilPage'
 import AdminPage from './pages/AdminPage'
 import BonusTipsPage from './pages/BonusTipsPage'
+import UserProfilePage from './pages/UserProfilePage'
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth()
@@ -25,6 +26,7 @@ export default function App() {
       <Route path="/tippen" element={<PrivateRoute><TippenPage /></PrivateRoute>} />
       <Route path="/profil" element={<PrivateRoute><ProfilPage /></PrivateRoute>} />
       <Route path="/bonus" element={<PrivateRoute><BonusTipsPage /></PrivateRoute>} />
+      <Route path="/user/:uid" element={<PrivateRoute><UserProfilePage /></PrivateRoute>} />
       <Route path="/admin" element={<PrivateRoute><AdminPage /></PrivateRoute>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

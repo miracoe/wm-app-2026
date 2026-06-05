@@ -7,42 +7,94 @@ import { useCountdown } from '../hooks/useCountdown'
 
 const DEADLINE = new Date('2026-06-11T11:00:00')
 
+// Alle 48 qualifizierten WM 2026 Länder
 const TEAMS = [
-  { name: 'Deutschland', code: 'DE' }, { name: 'Frankreich', code: 'FR' },
-  { name: 'Spanien', code: 'ES' }, { name: 'England', code: 'GB-ENG' },
-  { name: 'Brasilien', code: 'BR' }, { name: 'Argentinien', code: 'AR' },
-  { name: 'USA', code: 'US' }, { name: 'Mexiko', code: 'MX' },
-  { name: 'Portugal', code: 'PT' }, { name: 'Niederlande', code: 'NL' },
-  { name: 'Belgien', code: 'BE' }, { name: 'Italien', code: 'IT' },
-  { name: 'Kroatien', code: 'HR' }, { name: 'Marokko', code: 'MA' },
-  { name: 'Japan', code: 'JP' }, { name: 'Senegal', code: 'SN' },
-  { name: 'Kolumbien', code: 'CO' }, { name: 'Uruguay', code: 'UY' },
-  { name: 'Schweiz', code: 'CH' }, { name: 'Australien', code: 'AU' },
-  { name: 'Südkorea', code: 'KR' }, { name: 'Nigeria', code: 'NG' },
-  { name: 'Ghana', code: 'GH' }, { name: 'Kanada', code: 'CA' },
-  { name: 'Ecuador', code: 'EC' }, { name: 'Katar', code: 'QA' },
-  { name: 'Saudi-Arabien', code: 'SA' }, { name: 'Iran', code: 'IR' },
-  { name: 'Türkei', code: 'TR' }, { name: 'Österreich', code: 'AT' },
-  { name: 'Polen', code: 'PL' }, { name: 'Serbien', code: 'RS' },
-  { name: 'Dänemark', code: 'DK' }, { name: 'Schweden', code: 'SE' },
-  { name: 'Ukraine', code: 'UA' }, { name: 'Tschechien', code: 'CZ' },
-  { name: 'Rumänien', code: 'RO' }, { name: 'Georgien', code: 'GE' },
-  { name: 'Costa Rica', code: 'CR' }, { name: 'Panama', code: 'PA' },
+  // CONMEBOL (6)
+  { name: 'Argentinien', code: 'AR' },
+  { name: 'Brasilien', code: 'BR' },
+  { name: 'Ecuador', code: 'EC' },
+  { name: 'Kolumbien', code: 'CO' },
+  { name: 'Paraguay', code: 'PY' },
+  { name: 'Uruguay', code: 'UY' },
+  // CONCACAF (6 inkl. Gastgeber)
+  { name: 'USA', code: 'US' },
+  { name: 'Kanada', code: 'CA' },
+  { name: 'Mexiko', code: 'MX' },
+  { name: 'Costa Rica', code: 'CR' },
+  { name: 'Honduras', code: 'HN' },
+  { name: 'Panama', code: 'PA' },
+  // UEFA (16)
+  { name: 'Deutschland', code: 'DE' },
+  { name: 'England', code: 'GB-ENG' },
+  { name: 'Frankreich', code: 'FR' },
+  { name: 'Spanien', code: 'ES' },
+  { name: 'Portugal', code: 'PT' },
+  { name: 'Niederlande', code: 'NL' },
+  { name: 'Österreich', code: 'AT' },
+  { name: 'Schweiz', code: 'CH' },
+  { name: 'Türkei', code: 'TR' },
+  { name: 'Dänemark', code: 'DK' },
+  { name: 'Serbien', code: 'RS' },
+  { name: 'Kroatien', code: 'HR' },
+  { name: 'Schottland', code: 'GB-SCT' },
+  { name: 'Ungarn', code: 'HU' },
+  { name: 'Slowenien', code: 'SI' },
+  { name: 'Ukraine', code: 'UA' },
+  // AFC (8)
+  { name: 'Japan', code: 'JP' },
+  { name: 'Südkorea', code: 'KR' },
+  { name: 'Iran', code: 'IR' },
+  { name: 'Australien', code: 'AU' },
+  { name: 'Saudi-Arabien', code: 'SA' },
+  { name: 'Irak', code: 'IQ' },
+  { name: 'Jordanien', code: 'JO' },
+  { name: 'Usbekistan', code: 'UZ' },
+  // CAF (9)
+  { name: 'Marokko', code: 'MA' },
+  { name: 'Senegal', code: 'SN' },
+  { name: 'Nigeria', code: 'NG' },
+  { name: 'Ägypten', code: 'EG' },
+  { name: 'Elfenbeinküste', code: 'CI' },
+  { name: 'Kamerun', code: 'CM' },
+  { name: 'Südafrika', code: 'ZA' },
+  { name: 'Mali', code: 'ML' },
+  { name: 'DR Kongo', code: 'CD' },
+  // OFC (1)
+  { name: 'Neuseeland', code: 'NZ' },
+  // Interkontinentale Playoffs (2)
+  { name: 'Venezuela', code: 'VE' },
+  { name: 'Indonesien', code: 'ID' },
 ]
 
 
 
-function BonusCard({ icon, title, subtitle, locked, children }) {
+function BonusCard({ icon, title, subtitle, locked, saved, savedLabel, savedCode, children }) {
   return (
-    <div className={`card space-y-4 ${locked ? 'opacity-60' : ''}`}>
+    <div className={`card space-y-4 ${locked ? 'opacity-60' : ''} ${saved ? 'border-brand-green/30' : ''}`}>
       <div className="flex items-start gap-3">
         <span className="text-3xl">{icon}</span>
-        <div>
-          <h3 className="font-bold text-base">{title}</h3>
+        <div className="flex-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h3 className="font-bold text-base">{title}</h3>
+            {saved && <span className="text-xs bg-brand-green/20 text-brand-green px-2 py-0.5 rounded-full font-bold">✓ Abgegeben</span>}
+          </div>
           <p className="text-xs text-white/40">{subtitle}</p>
         </div>
-        {locked && <span className="ml-auto text-xs bg-white/10 text-white/40 px-2 py-1 rounded-full">🔒 Gesperrt</span>}
+        {locked && <span className="text-xs bg-white/10 text-white/40 px-2 py-1 rounded-full shrink-0">🔒 Gesperrt</span>}
       </div>
+
+      {/* Aktuell gespeicherter Tipp — immer sichtbar */}
+      {saved && savedLabel && (
+        <div className="flex items-center gap-3 bg-brand-green/10 border border-brand-green/20 rounded-xl px-4 py-3">
+          {savedCode && <Flag code={savedCode} size={28} />}
+          <div>
+            <p className="text-xs text-brand-green/70 font-bold uppercase tracking-wider">Dein aktueller Tipp</p>
+            <p className="font-bold text-sm">{savedLabel}</p>
+          </div>
+          {!locked && <span className="ml-auto text-xs text-white/30">änderbar</span>}
+        </div>
+      )}
+
       {!locked && children}
     </div>
   )
@@ -53,11 +105,12 @@ export default function BonusTipsPage() {
   const [bonusTips, setBonusTipsState] = useState(null)
   const [saving, setSaving] = useState('')
   const [saved, setSaved] = useState('')
+  const [saveError, setSaveError] = useState('')
 
-  const [champion, setChampion] = useState('Brasilien')
-  const [topScorer, setTopScorer] = useState('Kylian Mbappé')
+  const [champion, setChampion] = useState(TEAMS[0].name)
+  const [topScorer, setTopScorer] = useState(TEAMS[0].name)
   const [topScorerGoals, setTopScorerGoals] = useState('')
-  const [finalist, setFinalist] = useState('Frankreich')
+  const [finalist, setFinalist] = useState(TEAMS[1].name)
 
   useEffect(() => {
     if (!user) return
@@ -72,11 +125,19 @@ export default function BonusTipsPage() {
   }, [user])
 
   async function save(field, value) {
+    if (Date.now() >= DEADLINE.getTime() || bonusTips?.locked) return
     setSaving(field)
-    await setBonusTip(user.uid, { [field]: value })
-    setSaved(field)
-    setTimeout(() => setSaved(''), 2000)
-    setSaving('')
+    setSaveError('')
+    try {
+      await setBonusTip(user.uid, { [field]: value })
+      setSaved(field)
+      setTimeout(() => setSaved(''), 2000)
+    } catch (e) {
+      setSaveError('Fehler beim Speichern. Bitte erneut versuchen.')
+      setTimeout(() => setSaveError(''), 4000)
+    } finally {
+      setSaving('')
+    }
   }
 
   const deadlinePassed = Date.now() >= DEADLINE.getTime()
@@ -121,8 +182,20 @@ export default function BonusTipsPage() {
           </div>
         )}
 
+        {saveError && (
+          <div className="rounded-2xl px-4 py-3 text-center text-sm font-bold bg-brand-red/20 border border-brand-red/40 text-brand-red">
+            {saveError}
+          </div>
+        )}
+
         {/* Weltmeister */}
-        <BonusCard icon="🏆" title="Weltmeister" subtitle="+100 Punkte bei richtiger Vorhersage" locked={isLocked}>
+        <BonusCard
+          icon="🏆" title="Weltmeister" subtitle="+100 Punkte bei richtiger Vorhersage"
+          locked={isLocked}
+          saved={!!bonusTips?.champion}
+          savedLabel={bonusTips?.champion}
+          savedCode={TEAMS.find((t) => t.name === bonusTips?.champion)?.code}
+        >
           <div className="space-y-3">
             <select value={champion} onChange={(e) => setChampion(e.target.value)}
               className="w-full appearance-none bg-white/10 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white outline-none">
@@ -130,22 +203,25 @@ export default function BonusTipsPage() {
             </select>
             {selectedChampion && (
               <div className="flex items-center justify-center gap-3 py-2">
-                <Flag code={selectedChampion.code} size={48} />
-                <span className="font-bold text-lg">{selectedChampion.name}</span>
+                <Flag code={selectedChampion.code} size={40} />
+                <span className="font-bold">{selectedChampion.name}</span>
               </div>
             )}
             <button onClick={() => save('champion', champion)} disabled={saving === 'champion'}
               className="w-full btn-primary disabled:opacity-40">
-              {saved === 'champion' ? '✅ Gespeichert!' : saving === 'champion' ? '…' : bonusTips?.champion ? 'Ändern' : 'Abgeben'}
+              {saved === 'champion' ? '✅ Gespeichert!' : saving === 'champion' ? '…' : bonusTips?.champion ? 'Tipp ändern' : 'Abgeben'}
             </button>
-            {bonusTips?.champion && (
-              <p className="text-xs text-white/30 text-center">Aktuell: <b className="text-white">{bonusTips.champion}</b></p>
-            )}
           </div>
         </BonusCard>
 
         {/* Finalist */}
-        <BonusCard icon="🥈" title="Finalist (Verlierer-Team)" subtitle="+50 Punkte bei richtiger Vorhersage" locked={isLocked}>
+        <BonusCard
+          icon="🥈" title="Finalist (Verlierer-Team)" subtitle="+50 Punkte bei richtiger Vorhersage"
+          locked={isLocked}
+          saved={!!bonusTips?.finalist}
+          savedLabel={bonusTips?.finalist}
+          savedCode={TEAMS.find((t) => t.name === bonusTips?.finalist)?.code}
+        >
           <div className="space-y-3">
             <select value={finalist} onChange={(e) => setFinalist(e.target.value)}
               className="w-full appearance-none bg-white/10 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white outline-none">
@@ -153,22 +229,25 @@ export default function BonusTipsPage() {
             </select>
             {selectedFinalist && (
               <div className="flex items-center justify-center gap-3 py-2">
-                <Flag code={selectedFinalist.code} size={48} />
-                <span className="font-bold text-lg">{selectedFinalist.name}</span>
+                <Flag code={selectedFinalist.code} size={40} />
+                <span className="font-bold">{selectedFinalist.name}</span>
               </div>
             )}
             <button onClick={() => save('finalist', finalist)} disabled={saving === 'finalist'}
               className="w-full btn-primary disabled:opacity-40">
-              {saved === 'finalist' ? '✅ Gespeichert!' : saving === 'finalist' ? '…' : bonusTips?.finalist ? 'Ändern' : 'Abgeben'}
+              {saved === 'finalist' ? '✅ Gespeichert!' : saving === 'finalist' ? '…' : bonusTips?.finalist ? 'Tipp ändern' : 'Abgeben'}
             </button>
-            {bonusTips?.finalist && (
-              <p className="text-xs text-white/30 text-center">Aktuell: <b className="text-white">{bonusTips.finalist}</b></p>
-            )}
           </div>
         </BonusCard>
 
         {/* Torschützenkönig */}
-        <BonusCard icon="⚽" title="Torschützenkönig — Land" subtitle="+75 Punkte bei richtigem Land · +25 extra für genaue Torzahl" locked={isLocked}>
+        <BonusCard
+          icon="⚽" title="Torschützenkönig — Land" subtitle="+75 Punkte bei richtigem Land · +25 extra für genaue Torzahl"
+          locked={isLocked}
+          saved={!!bonusTips?.topScorer}
+          savedLabel={bonusTips?.topScorer ? `${bonusTips.topScorer}${bonusTips.topScorerGoals ? ` · ${bonusTips.topScorerGoals} Tore` : ''}` : null}
+          savedCode={TEAMS.find((t) => t.name === bonusTips?.topScorer)?.code}
+        >
           <div className="space-y-3">
             <select value={topScorer} onChange={(e) => setTopScorer(e.target.value)}
               className="w-full appearance-none bg-white/10 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white outline-none">
@@ -176,8 +255,8 @@ export default function BonusTipsPage() {
             </select>
             {TEAMS.find((t) => t.name === topScorer) && (
               <div className="flex items-center justify-center gap-3 py-2">
-                <Flag code={TEAMS.find((t) => t.name === topScorer).code} size={48} />
-                <span className="font-bold text-lg">{topScorer}</span>
+                <Flag code={TEAMS.find((t) => t.name === topScorer).code} size={40} />
+                <span className="font-bold">{topScorer}</span>
               </div>
             )}
             <div>
@@ -189,6 +268,7 @@ export default function BonusTipsPage() {
             </div>
             <button
               onClick={() => {
+                if (isLocked) return
                 setBonusTip(user.uid, {
                   topScorer,
                   topScorerGoals: topScorerGoals ? parseInt(topScorerGoals) : null,
@@ -196,14 +276,8 @@ export default function BonusTipsPage() {
               }}
               disabled={saving === 'topScorer'}
               className="w-full btn-primary disabled:opacity-40">
-              {saved === 'topScorer' ? '✅ Gespeichert!' : saving === 'topScorer' ? '…' : bonusTips?.topScorer ? 'Ändern' : 'Abgeben'}
+              {saved === 'topScorer' ? '✅ Gespeichert!' : saving === 'topScorer' ? '…' : bonusTips?.topScorer ? 'Tipp ändern' : 'Abgeben'}
             </button>
-            {bonusTips?.topScorer && (
-              <p className="text-xs text-white/30 text-center">
-                Aktuell: <b className="text-white">{bonusTips.topScorer}</b>
-                {bonusTips.topScorerGoals ? ` · ${bonusTips.topScorerGoals} Tore` : ''}
-              </p>
-            )}
           </div>
         </BonusCard>
 

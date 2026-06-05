@@ -7,7 +7,10 @@ const BADGES = {
 
 const RANK_COLORS = ['text-brand-gold', 'text-gray-300', 'text-amber-600']
 
+import { useNavigate } from 'react-router-dom'
+
 export default function LeaderboardRow({ user, rank, isMe }) {
+  const navigate = useNavigate()
   const rankDiff = user.lastRank - rank
   const rankArrow = rankDiff > 0
     ? <span className="text-brand-green text-xs font-bold">▲{rankDiff}</span>
@@ -23,9 +26,12 @@ export default function LeaderboardRow({ user, rank, isMe }) {
     : null
 
   return (
-    <div className={`flex items-center gap-3 p-3 rounded-xl mb-2 transition-all ${
-      isMe ? 'bg-brand-blue/20 border border-brand-blue/40' : 'bg-brand-card'
-    }`}>
+    <div
+      onClick={() => navigate(`/user/${user.uid}`)}
+      className={`flex items-center gap-3 p-3 rounded-xl mb-2 transition-all cursor-pointer active:scale-98 ${
+        isMe ? 'bg-brand-blue/20 border border-brand-blue/40' : 'bg-brand-card active:bg-white/5'
+      }`}
+    >
       {/* Rank */}
       <div className="w-8 text-center shrink-0">
         <span className={`font-display text-xl ${RANK_COLORS[rank - 1] || 'text-white/70'}`}>

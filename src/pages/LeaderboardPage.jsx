@@ -7,9 +7,13 @@ import { useAuth } from '../context/AuthContext'
 export default function LeaderboardPage() {
   const { user } = useAuth()
   const [players, setPlayers] = useState([])
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const unsub = getLeaderboard(setPlayers)
+    const unsub = getLeaderboard((data) => {
+      setPlayers(data)
+      setLoading(false)
+    })
     return unsub
   }, [])
 
@@ -49,7 +53,9 @@ export default function LeaderboardPage() {
         )}
 
         {/* Leaderboard */}
-        {players.length === 0
+        {loading
+          ? <div className="flex justify-center mt-20"><div className="w-8 h-8 border-2 border-brand-gold border-t-transparent rounded-full animate-spin" /></div>
+          : players.length === 0
           ? <p className="text-center text-white/30 mt-20">Noch keine Spieler…</p>
           : players.map((p, i) => (
             <LeaderboardRow key={p.uid} user={p} rank={i + 1} isMe={p.uid === user?.uid} />
