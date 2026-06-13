@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext'
 import { getBonusTips, setBonusTip } from '../lib/firestore'
 import { useCountdown } from '../hooks/useCountdown'
 
-const DEADLINE = new Date('2026-06-11T11:00:00')
+const DEADLINE = new Date('2026-06-16T11:00:00')
 
 // Alle 48 qualifizierten WM 2026 Länder
 const TEAMS = [
@@ -156,7 +156,7 @@ export default function BonusTipsPage() {
         {!deadlinePassed ? (
           <div className="card bg-brand-gold/10 border-brand-gold/20 text-center space-y-1">
             <p className="text-sm text-brand-gold font-bold">Turnier-Vorhersagen</p>
-            <p className="text-xs text-white/40">Deadline: 11. Juni 2026, 11:00 Uhr</p>
+            <p className="text-xs text-white/40">Deadline: 16. Juni 2026, 11:00 Uhr</p>
             {countdown && (
               <div className="flex items-center justify-center gap-2 mt-2">
                 {[
@@ -178,7 +178,7 @@ export default function BonusTipsPage() {
           <div className="card bg-brand-red/10 border-brand-red/20 text-center">
             <p className="text-2xl mb-1">🔒</p>
             <p className="text-sm text-brand-red font-bold">Deadline abgelaufen</p>
-            <p className="text-xs text-white/40 mt-1">Bonus-Tipps konnten bis 11. Juni 2026, 11:00 Uhr abgegeben werden.</p>
+            <p className="text-xs text-white/40 mt-1">Bonus-Tipps konnten bis 16. Juni 2026, 11:00 Uhr abgegeben werden.</p>
           </div>
         )}
 

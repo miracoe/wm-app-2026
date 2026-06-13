@@ -167,7 +167,6 @@ export default function MatchCard({ match }) {
   const [useAllIn, setUseAllIn] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
-  const [showReveal, setShowReveal] = useState(false)
   const [showSpionageConfirm, setShowSpionageConfirm] = useState(false)
   const [spionageSpending, setSpionageSpending] = useState(false)
 
@@ -339,24 +338,14 @@ export default function MatchCard({ match }) {
         </button>
       )}
 
-      {/* Tipp-Enthüllung: auto wenn Spionage aktiv, sonst toggle nach Anstoß */}
-      {hasSpied && canTip && (
-        <div className="mt-2">
-          <TippReveal matchId={match.id} currentUid={user?.uid} />
-        </div>
-      )}
-
-      {(match.status === 'live' || match.status === 'finished' || isAfterKickoff) && (
-        <button
-          onClick={() => setShowReveal(!showReveal)}
-          className="w-full mt-2 py-2 rounded-xl text-xs font-bold border border-white/10 text-white/40"
-        >
-          {showReveal ? '▲ Tipps ausblenden' : '👁 Alle Tipps anzeigen'}
-        </button>
-      )}
-
-      {showReveal && (
-        <div className="mt-2">
+      {/* Tipp-Enthüllung: auto nach Anstoß oder wenn Spionage aktiv */}
+      {(hasSpied || !canTip) && (
+        <div className="mt-2 border-t border-white/5 pt-3">
+          {!canTip && match.status === 'upcoming' ? null : (
+            <p className="text-xs text-white/30 uppercase tracking-wider mb-2">
+              {hasSpied && canTip ? '🕵️ Spionage aktiv' : '👁 Alle Tipps'}
+            </p>
+          )}
           <TippReveal matchId={match.id} currentUid={user?.uid} />
         </div>
       )}
