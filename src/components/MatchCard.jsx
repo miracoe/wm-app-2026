@@ -3,7 +3,7 @@ import Flag from './Flag'
 import CountdownTimer from './CountdownTimer'
 import {
   getUserTipsForMatch, setTip, getAllTipsForMatch,
-  getReactions, addReaction,
+  getReactions, addReaction, getAllUsers,
 } from '../lib/firestore'
 import { useAuth } from '../context/AuthContext'
 import { updateDoc, doc, getDoc } from 'firebase/firestore'
@@ -167,6 +167,7 @@ export default function MatchCard({ match }) {
   const [useAllIn, setUseAllIn] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [showReveal, setShowReveal] = useState(false)
   const [showSpionageConfirm, setShowSpionageConfirm] = useState(false)
   const [spionageSpending, setSpionageSpending] = useState(false)
 
@@ -338,15 +339,27 @@ export default function MatchCard({ match }) {
         </button>
       )}
 
-      {/* Tipp-Enthüllung: auto nach Anstoß oder wenn Spionage aktiv */}
-      {(hasSpied || !canTip) && (
+      {/* Tipp-Enthüllung: toggle nach Anstoß, auto-reveal bei Spionage */}
+      {hasSpied && canTip && (
         <div className="mt-2 border-t border-white/5 pt-3">
-          {!canTip && match.status === 'upcoming' ? null : (
-            <p className="text-xs text-white/30 uppercase tracking-wider mb-2">
-              {hasSpied && canTip ? '🕵️ Spionage aktiv' : '👁 Alle Tipps'}
-            </p>
-          )}
+          <p className="text-xs text-brand-gold/60 uppercase tracking-wider mb-2">🕵️ Spionage aktiv</p>
           <TippReveal matchId={match.id} currentUid={user?.uid} />
+        </div>
+      )}
+
+      {!canTip && (
+        <div className="mt-2">
+          <button
+            onClick={() => setShowReveal(!showReveal)}
+            className="w-full py-2 rounded-xl text-xs font-bold border border-white/10 text-white/40 active:bg-white/5 transition-colors"
+          >
+            {showReveal ? '▲ Tipps ausblenden' : '👁 Tipps aller Spieler anzeigen'}
+          </button>
+          {showReveal && (
+            <div className="mt-2">
+              <TippReveal matchId={match.id} currentUid={user?.uid} />
+            </div>
+          )}
         </div>
       )}
 
